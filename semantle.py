@@ -11,8 +11,13 @@ import sqlite3
 import base64
 from functools import lru_cache
 from flask_ngrok import run_with_ngrok
-from googletrans import Translator
-translator = Translator()
+#from googletrans import Translator
+import time
+import requests
+import json
+import argparse
+
+#translator = Translator()
 
 import socket
 print(socket.gethostbyname(socket.getfqdn(socket.gethostname())))
@@ -46,7 +51,7 @@ def expand_bfloat(vec, half_length=600):
 
 @app.route("/model/<string:word>")
 def word(word):
-    word = translator.translate(word).text
+    word = translate(word)
     try:
         con = sqlite3.connect("word2vec.db")
         cur = con.cursor()
@@ -64,7 +69,7 @@ def word(word):
 
 @lru_cache(maxsize=50000)
 def get_model2(secret, word):
-    word = translator.translate(word).text
+    word = translate(word)
     con = sqlite3.connect("word2vec.db")
     cur = con.cursor()
     res = cur.execute(
@@ -86,7 +91,7 @@ def get_model2(secret, word):
 
 @app.route("/model2/<string:secret>/<string:word>")
 def model2(secret, word):
-    word = translator.translate(word).text
+    word = translate(word)
     try:
         return get_model2(secret, word)
     except Exception as e:
@@ -96,7 +101,7 @@ def model2(secret, word):
 
 @app.route("/similarity/<string:word>")
 def similarity(word):
-    word = translator.translate(word).text
+    word = translate(word)
     try:
         con = sqlite3.connect("word2vec.db")
         cur = con.cursor()
@@ -115,7 +120,7 @@ def similarity(word):
 
 @app.route("/nearby/<string:word>")
 def nearby(word):
-    word = translator.translate(word).text
+    word = translate(word)
     try:
         con = sqlite3.connect("word2vec.db")
         cur = con.cursor()
@@ -178,8 +183,56 @@ def add_header(response):
     response.headers["Cache-Control"] = "no-store"
     return response
 
+url = 'https://platform.neuralspace.ai/api/translation/v1/annotated/translate'
+#auth_token = 
+headers = {}
+
+
+def translate(word, languageToken="zh-CN"): 
+    passedValue = word.encode('utf-8').decode('latin1')
+    data = f"""
+    {{
+        "text": "{passedValue}",
+        "sourceLanguage":"{languageToken}",
+        "targetLanguage": "en"
+    }}
+    """
+    resp = requests.post(url, headers=headers, data=data)
+
+    #print(resp.text)
+
+    response_dict = json.loads(resp.text)
+    #print("translation: " + response_dict["data"]["translated_text"])
+    translatedtext = response_dict["data"]["translated_text"]
+
+    return translatedtext.split(" ")[0]
+
 
 if __name__ == "__main__":
     import sqlite3
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--auth_token', help='authorization token to NeuralSpace')
+    opt = parser.parse_args()
+
+    auth_token = opt.auth_token
+
+    headers["Accept"] = "application/json, text/plain, */*"
+    headers["authorization"] = auth_token
+    headers["Content-Type"] = "application/json;charset=UTF-8"
+
 
     app.run()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
