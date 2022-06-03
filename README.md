@@ -1,4 +1,4 @@
-Setup:
+Setup
 
 1. Install Python requirements using `pip install -r requirements.txt`.
 
